@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#071a33">
+    <meta name="description" content="DAN BAIWA TECH Faculty of Computing Past Questions Portal">
+    <title>DAN BAIWA TECH | Past Questions Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="site-header" id="home">
+        <div class="container header-content">
+            <a class="brand" href="#home">
+                <span class="brand-mark">DB</span>
+                <span>
+                    <strong>DAN BAIWA TECH</strong>
+                    <small>FACULTY OF COMPUTING</small>
+                </span>
+            </a>
+
+            <nav class="main-nav">
+                <a href="#home">Home</a>
+                <a href="#registration">Find Questions</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container hero-content">
+                <span class="eyebrow">FACULTY OF COMPUTING</span>
+                <h1>Your Past Questions,<br><span>All in One Place.</span></h1>
+                <p>
+                    Access past examination questions according to your
+                    department, academic level and semester.
+                </p>
+                <a href="#registration" class="primary-button">
+                    Find Your Questions
+                </a>
+
+                <div class="hero-stats">
+                    <div>
+                        <strong>4</strong>
+                        <span>Departments</span>
+                    </div>
+                    <div>
+                        <strong>2</strong>
+                        <span>Semesters</span>
+                    </div>
+                    <div>
+                        <strong>PDF</strong>
+                        <span>Resources</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section finder-section" id="registration">
+            <div class="container narrow-container">
+                <div class="section-heading centered">
+                    <span class="eyebrow">STUDENT ACCESS</span>
+                    <h2>Find Your Past Questions</h2>
+                    <p>
+                        Enter your registration number to view the
+                        department and level associated with it.
+                    </p>
+                </div>
+
+                <form id="regFinderForm" class="finder-form">
+                    <label for="registrationNumber">
+                        Registration Number
+                    </label>
+
+                    <input
+                        type="text"
+                        id="registrationNumber"
+                        name="registrationNumber"
+                        placeholder="CST/24/IFT/00001"
+                        autocomplete="off"
+                        autocapitalize="characters"
+                        spellcheck="false"
+                        maxlength="18"
+                        required
+                    >
+
+                    <p class="input-hint">
+                        Example: CST/24/IFT/00001
+                    </p>
+
+                    <button type="submit" class="primary-button full-button">
+                        Find My Questions
+                    </button>
+
+                    <p id="finderMessage" class="finder-message"
+                       role="status" aria-live="polite"></p>
+                </form>
+
+                <div class="format-help">
+                    <strong>Supported registration formats</strong>
+                    <p>CST/25/IFT/00001 — Level 100</p>
+                    <p>CST/24/COM/00001 — Level 200</p>
+                    <p>CST/23/CBS/00001 — Level 300</p>
+                    <p>CST/22/SWE/00001 — Level 400</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- This section remains hidden until a valid number is entered. -->
+        <section class="section departments-section" id="departments" hidden>
+            <div class="container">
+                <div class="section-heading">
+                    <span class="eyebrow">YOUR ACADEMIC RESOURCES</span>
+                    <h2 id="studentDepartmentTitle">Your Department</h2>
+                    <p id="studentDepartmentDescription">
+                        Past questions for your department and level.
+                    </p>
+                </div>
+
+                <div id="studentDepartmentContent"></div>
+            </div>
+        </section>
+
+        <section class="section information-section">
+            <div class="container info-card">
+                <div class="info-icon">i</div>
+                <div>
+                    <h3>Important Information</h3>
+                    <p>
+                        This portal matches the registration number format
+                        to a department and academic level. It does not
+                        independently verify student enrolment.
+                    </p>
+                    <p>
+                        If a past question is not available, it may be added
+                        when the PDF becomes available.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-content">
+            <div>
+                <strong>DAN BAIWA TECH</strong>
+                <p>Faculty of Computing Past Questions Portal</p>
+            </div>
+            <p>© <span id="currentYear"></span> DAN BAIWA TECH</p>
+        </div>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
