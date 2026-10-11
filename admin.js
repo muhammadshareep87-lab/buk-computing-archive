@@ -25,15 +25,19 @@ function showMessage(element, message, success = false) {
   element.style.color = success ? "#15803d" : "#b42318";
 }
 
+
 function showLogin() {
   loginSection.hidden = false;
   dashboardSection.hidden = true;
+  logoutBtn.hidden = true;
 }
 
 function showDashboard() {
   loginSection.hidden = true;
   dashboardSection.hidden = false;
+  logoutBtn.hidden = false;
 }
+
 
 async function getAccessToken() {
   const { data, error } = await supabaseClient.auth.getSession();
