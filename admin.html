@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102448">
+
+  <title>Admin Dashboard | BUK Computing Archive</title>
+
+  <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">BCA</div>
+      <div>
+        <h1>BUK Computing Archive</h1>
+        <p>Administration Portal</p>
+      </div>
+    </div>
+
+    <button id="logoutBtn" class="logout-btn" hidden>
+      Sign Out
+    </button>
+  </header>
+
+  <main class="container">
+
+    <section id="loginSection" class="login-card">
+      <span class="eyebrow">SECURE ACCESS</span>
+      <h2>Admin Login</h2>
+      <p>Sign in with your approved administrator account.</p>
+
+      <form id="loginForm">
+        <label for="email">Email Address</label>
+        <input
+          id="email"
+          type="email"
+          placeholder="Enter admin email"
+          autocomplete="username"
+          required
+        >
+
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          placeholder="Enter password"
+          autocomplete="current-password"
+          required
+        >
+
+        <button type="submit" class="primary-btn">
+          Sign In
+        </button>
+
+        <p id="loginMessage" class="message" role="status"></p>
+      </form>
+    </section>
+
+    <section id="dashboardSection" hidden>
+      <div class="welcome">
+        <div>
+          <span class="eyebrow">CONTROL PANEL</span>
+          <h2>Admin Dashboard</h2>
+          <p>Manage Faculty of Computing past questions.</p>
+        </div>
+        <div class="status-label">
+          <span class="status-dot"></span>
+          Admin Area
+        </div>
+      </div>
+
+      <section class="panel">
+        <h3>Upload Past Questions</h3>
+        <p class="panel-description">
+          Add a PDF for the correct department, level and semester.
+        </p>
+
+        <form id="uploadForm">
+          <label for="title">Course or Document Title</label>
+          <input
+            id="title"
+            name="title"
+            type="text"
+            placeholder="e.g. Introduction to Programming"
+            required
+          >
+
+          <label for="department">Department</label>
+          <select id="department" name="department" required>
+            <option value="">Select department</option>
+            <option value="IFT">Information Technology</option>
+            <option value="COM">Computer Science</option>
+            <option value="CBS">Cybersecurity</option>
+            <option value="SWE">Software Engineering</option>
+          </select>
+
+          <label for="level">Academic Level</label>
+          <select id="level" name="level" required>
+            <option value="">Select level</option>
+            <option value="Level 100">Level 100</option>
+            <option value="Level 200">Level 200</option>
+            <option value="Level 300">Level 300</option>
+            <option value="Level 400">Level 400</option>
+          </select>
+
+          <label for="semester">Semester</label>
+          <select id="semester" name="semester" required>
+            <option value="">Select semester</option>
+            <option value="First Semester">First Semester</option>
+            <option value="Second Semester">Second Semester</option>
+          </select>
+
+          <label for="academicYear">Academic Year (optional)</label>
+          <input
+            id="academicYear"
+            name="academicYear"
+            type="text"
+            placeholder="e.g. 2025/2026"
+          >
+
+          <label for="pdfFile">Select PDF File</label>
+          <input
+            id="pdfFile"
+            name="file"
+            type="file"
+            accept="application/pdf,.pdf"
+            required
+          >
+
+          <p class="file-note">PDF only · Maximum size: 20 MB</p>
+
+          <button type="submit" id="uploadBtn" class="primary-btn">
+            Upload Past Question
+          </button>
+
+          <p id="uploadMessage" class="message" role="status"></p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h3>Uploaded Documents</h3>
+            <p class="panel-description">
+              Review the documents stored in the archive.
+            </p>
+          </div>
+
+          <button id="refreshBtn" class="secondary-btn">
+            Refresh
+          </button>
+        </div>
+
+        <div id="documentsList" class="documents-list">
+          <p class="empty-state">
+            Documents will appear here after the backend is connected.
+          </p>
+        </div>
+
+        <p id="documentsMessage" class="message" role="status"></p>
+      </section>
+    </section>
+
+    <footer>
+      <p>BUK Computing Archive · Administration Portal</p>
+      <p>Faculty of Computing Past Questions &amp; Study Resources</p>
+    </footer>
+
+  </main>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
