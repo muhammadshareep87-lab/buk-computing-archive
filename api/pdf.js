@@ -11,6 +11,7 @@ export default async function handler(req, res) {
 
   try {
     const id = req.query.id;
+    const shouldDownload = req.query.download === "1";
 
     if (
       typeof id !== "string" ||
@@ -28,6 +29,8 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (findError) {
+      console.error("Document lookup failed:", findError.message);
+
       return res.status(500).json({
         error: "Unable to find the PDF."
       });
@@ -41,13 +44,17 @@ export default async function handler(req, res) {
 
     const { data, error } = await supabaseAdmin.storage
       .from("past-questions")
-      .createSignedUrl(doc.storage_path, 120);
+      .createSignedUrl(
+        doc.storage_path,
+        120,
+        shouldDownload ? { download: true } : {}
+      );
 
     if (error || !data?.signedUrl) {
       console.error("PDF link creation failed:", error?.message);
 
       return res.status(500).json({
-        error: "Unable to open the PDF."
+        error: "Unable to open or download the PDF."
       });
     }
 
