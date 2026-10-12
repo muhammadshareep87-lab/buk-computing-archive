@@ -1,17 +1,48 @@
-
 import { supabaseAdmin } from "../lib/supabaseAdmin.js";
 
 const VALID_DEPARTMENTS = ["IFT", "COM", "CBS", "SWE"];
+
 const VALID_LEVELS = [
   "Level 100",
   "Level 200",
   "Level 300",
   "Level 400"
 ];
-const VALID_SEMESTERS = ["First Semester", "Second Semester"];
+
+const VALID_SEMESTERS = [
+  "First Semester",
+  "Second Semester"
+];
+
+const LEVEL_BY_YEAR = {
+  "25": "Level 100",
+  "24": "Level 200",
+  "23": "Level 300",
+  "22": "Level 400"
+};
+
+function validateRegistrationNumber(value) {
+  if (typeof value !== "string") return null;
+
+  const match = value.trim().toUpperCase().match(
+    /^CST\/(22|23|24|25)\/(IFT|CBS|COM|SWE)\/(\d{5})$/
+  );
+
+  if (!match) return null;
+
+  const serial = Number(match[3]);
+
+  if (serial < 1 || serial > 10000) return null;
+
+  return {
+    department: match[2],
+    level: LEVEL_BY_YEAR[match[1]]
+  };
+}
 
 async function verifyAdmin(req) {
   const header = req.headers.authorization || "";
+
   const token = header.startsWith("Bearer ")
     ? header.slice(7)
     : "";
@@ -50,8 +81,25 @@ async function removeStoredPdf(storagePath) {
 
 export default async function handler(req, res) {
   try {
-    // PUBLIC: list documents and all linked departments.
+    /*
+     * GET:
+     * A valid Computing registration number is required.
+     * Only documents matching the student's department and level
+     * are returned.
+     */
     if (req.method === "GET") {
+      const student = validateRegistrationNumber(
+        req.query.registrationNumber
+      );
+
+      if (!student) {
+        return sendError(
+          res,
+          400,
+          "A valid computing registration number is required."
+        );
+      }
+
       const { data: docs, error } = await supabaseAdmin
         .from("past_questions")
         .select(
@@ -64,7 +112,7 @@ export default async function handler(req, res) {
         return sendError(res, 500, "Unable to load past questions.");
       }
 
-      if (!docs.length) {
+      if (!docs || docs.length === 0) {
         return res.status(200).json({ documents: [] });
       }
 
@@ -77,39 +125,61 @@ export default async function handler(req, res) {
 
       if (linksError) {
         console.error("Department listing failed:", linksError.message);
-        return sendError(res, 500, "Unable to load document departments.");
+        return sendError(
+          res,
+          500,
+          "Unable to load document departments."
+        );
       }
 
       const departmentsByDocument = new Map();
 
-      for (const link of links) {
+      for (const link of links || []) {
         if (!departmentsByDocument.has(link.document_id)) {
           departmentsByDocument.set(link.document_id, []);
         }
 
-        departmentsByDocument.get(link.document_id).push(link.department);
+        departmentsByDocument.get(link.document_id).push(
+          link.department
+        );
       }
 
-      const documents = docs.map((doc) => {
-        const linkedDepartments =
-          departmentsByDocument.get(doc.id) || [doc.department];
+      const documents = docs
+        .map((doc) => {
+          const linkedDepartments =
+            departmentsByDocument.get(doc.id) || [doc.department];
 
-        return {
-          id: doc.id,
-          title: doc.title,
-          department: doc.department,
-          departments: linkedDepartments,
-          academicLevel: doc.academic_level,
-          academic_level: doc.academic_level,
-          semester: doc.semester,
-          academicYear: doc.academic_year,
-          academic_year: doc.academic_year
-        };
-      });
+          return {
+            id: doc.id,
+            title: doc.title,
+            department: doc.department,
+            departments: linkedDepartments,
+            academicLevel: doc.academic_level,
+            academic_level: doc.academic_level,
+            semester: doc.semester,
+            academicYear: doc.academic_year,
+            academic_year: doc.academic_year
+          };
+        })
+        .filter((doc) => {
+          const departments = doc.departments.length
+            ? doc.departments
+            : [doc.department];
+
+          return (
+            departments.includes(student.department) &&
+            doc.academic_level === student.level
+          );
+        });
+
+      res.setHeader("Cache-Control", "no-store");
 
       return res.status(200).json({ documents });
     }
 
+    /*
+     * Only POST and DELETE are allowed for admin operations.
+     */
     if (!["POST", "DELETE"].includes(req.method)) {
       res.setHeader("Allow", "GET, POST, DELETE");
       return sendError(res, 405, "Method not allowed.");
@@ -121,27 +191,40 @@ export default async function handler(req, res) {
       return sendError(res, 403, "Admin access denied.");
     }
 
-    // SAVE ONE PDF AND LINK IT TO MULTIPLE DEPARTMENTS.
+    /*
+     * POST:
+     * Save one PDF and link it to multiple departments.
+     */
     if (req.method === "POST") {
       const body = req.body || {};
+
       const title =
-        typeof body.title === "string" ? body.title.trim() : "";
+        typeof body.title === "string"
+          ? body.title.trim()
+          : "";
+
       const departments = Array.isArray(body.departments)
         ? [...new Set(body.departments)]
         : [];
+
       const level = body.academicLevel;
       const semester = body.semester;
+
       const academicYear =
         typeof body.academicYear === "string"
           ? body.academicYear.trim()
           : "";
+
       const storagePath = body.storagePath;
 
       if (
         !title ||
         title.length > 200 ||
         departments.length === 0 ||
-        departments.some((d) => !VALID_DEPARTMENTS.includes(d)) ||
+        departments.some(
+          (department) =>
+            !VALID_DEPARTMENTS.includes(department)
+        ) ||
         !VALID_LEVELS.includes(level) ||
         !VALID_SEMESTERS.includes(semester) ||
         typeof storagePath !== "string" ||
@@ -153,7 +236,6 @@ export default async function handler(req, res) {
         return sendError(res, 400, "Invalid document details.");
       }
 
-      // Keep the existing required department column compatible.
       const { data: doc, error: insertError } = await supabaseAdmin
         .from("past_questions")
         .insert({
@@ -171,7 +253,11 @@ export default async function handler(req, res) {
 
       if (insertError) {
         console.error("Document save failed:", insertError.message);
-        return sendError(res, 500, "Unable to save document details.");
+        return sendError(
+          res,
+          500,
+          "Unable to save document details."
+        );
       }
 
       const rows = departments.map((department) => ({
@@ -186,19 +272,24 @@ export default async function handler(req, res) {
       if (linkError) {
         console.error("Department linking failed:", linkError.message);
 
-        // Roll back metadata and try to clean up the uploaded PDF.
         const { error: rollbackError } = await supabaseAdmin
           .from("past_questions")
           .delete()
           .eq("id", doc.id);
 
         if (rollbackError) {
-          console.error("Metadata rollback failed:", rollbackError.message);
+          console.error(
+            "Metadata rollback failed:",
+            rollbackError.message
+          );
         } else {
           try {
             await removeStoredPdf(storagePath);
           } catch (cleanupError) {
-            console.error("Upload cleanup required:", cleanupError.message);
+            console.error(
+              "Upload cleanup required:",
+              cleanupError.message
+            );
           }
         }
 
@@ -218,9 +309,13 @@ export default async function handler(req, res) {
       });
     }
 
-    // DELETE: remove from one department OR delete everywhere.
+    /*
+     * DELETE:
+     * Remove a PDF from one department or from all departments.
+     */
     const id = req.query.id;
     const department = req.query.department;
+
     const deleteEverywhere =
       req.query.all === "1" || !department;
 
@@ -250,7 +345,6 @@ export default async function handler(req, res) {
     }
 
     if (deleteEverywhere) {
-      // Remove storage first so a storage failure doesn't lose metadata.
       try {
         await removeStoredPdf(doc.storage_path);
       } catch {
@@ -263,7 +357,11 @@ export default async function handler(req, res) {
         .eq("id", id);
 
       if (deleteError) {
-        console.error("Metadata deletion failed:", deleteError.message);
+        console.error(
+          "Metadata deletion failed:",
+          deleteError.message
+        );
+
         return sendError(
           res,
           500,
@@ -282,16 +380,25 @@ export default async function handler(req, res) {
       .eq("document_id", id);
 
     if (linksError) {
-      return sendError(res, 500, "Unable to check department links.");
+      return sendError(
+        res,
+        500,
+        "Unable to check department links."
+      );
     }
 
-    const targetLink = links.find((link) => link.department === department);
+    const targetLink = (links || []).find(
+      (link) => link.department === department
+    );
 
     if (!targetLink) {
-      return sendError(res, 404, "This PDF is not linked to that department.");
+      return sendError(
+        res,
+        404,
+        "This PDF is not linked to that department."
+      );
     }
 
-    // If this is the last department, remove the PDF before deleting metadata.
     if (links.length === 1) {
       try {
         await removeStoredPdf(doc.storage_path);
@@ -305,7 +412,11 @@ export default async function handler(req, res) {
         .eq("id", id);
 
       if (deleteDocError) {
-        console.error("Document deletion failed:", deleteDocError.message);
+        console.error(
+          "Document deletion failed:",
+          deleteDocError.message
+        );
+
         return sendError(
           res,
           500,
@@ -314,7 +425,8 @@ export default async function handler(req, res) {
       }
 
       return res.status(200).json({
-        message: "The last department link was removed and the PDF was deleted."
+        message:
+          "The last department link was removed and the PDF was deleted."
       });
     }
 
@@ -324,8 +436,16 @@ export default async function handler(req, res) {
       .eq("id", targetLink.id);
 
     if (unlinkError) {
-      console.error("Department unlink failed:", unlinkError.message);
-      return sendError(res, 500, "Unable to remove the PDF from this department.");
+      console.error(
+        "Department unlink failed:",
+        unlinkError.message
+      );
+
+      return sendError(
+        res,
+        500,
+        "Unable to remove the PDF from this department."
+      );
     }
 
     return res.status(200).json({
@@ -333,6 +453,11 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("Documents API error:", error.message);
-    return sendError(res, 500, error.message || "Server error. Please try again.");
+
+    return sendError(
+      res,
+      500,
+      error.message || "Server error. Please try again."
+    );
   }
-}
+             }
