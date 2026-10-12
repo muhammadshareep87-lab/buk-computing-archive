@@ -88,14 +88,31 @@
             required
           >
 
-          <label for="department">Department</label>
-          <select id="department" name="department" required>
-            <option value="">Select department</option>
-            <option value="IFT">Information Technology</option>
-            <option value="COM">Computer Science</option>
-            <option value="CBS">Cybersecurity</option>
-            <option value="SWE">Software Engineering</option>
-          </select>
+          
+<fieldset id="departmentGroup" class="department-options">
+  <legend>Select Department(s)</legend>
+
+  <label>
+    <input type="checkbox" name="departments" value="IFT">
+    Information Technology
+  </label>
+
+  <label>
+    <input type="checkbox" name="departments" value="COM">
+    Computer Science
+  </label>
+
+  <label>
+    <input type="checkbox" name="departments" value="CBS">
+    Cybersecurity
+  </label>
+
+  <label>
+    <input type="checkbox" name="departments" value="SWE">
+    Software Engineering
+  </label>
+</fieldset>
+
 
           <label for="level">Academic Level</label>
           <select id="level" name="level" required>
