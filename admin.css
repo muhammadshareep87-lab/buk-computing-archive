@@ -309,3 +309,42 @@ footer {
     padding: 9px 11px;
   }
 }
+
+
+/* Multiple Department Upload */
+.department-options {
+  border: 1px solid #d5deeb;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 0 0 20px;
+  min-width: 0;
+  background: #fff;
+}
+
+.department-options legend {
+  padding: 0 8px;
+  font-weight: 600;
+  color: #102448;
+}
+
+.department-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  cursor: pointer;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.department-options input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  margin: 0;
+  padding: 0;
+  accent-color: #1d4ed8;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
