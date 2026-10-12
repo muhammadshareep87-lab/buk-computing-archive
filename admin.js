@@ -1,4 +1,6 @@
 
+"use strict";
+
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
@@ -18,13 +20,18 @@ const refreshBtn = document.getElementById("refreshBtn");
 const documentsList = document.getElementById("documentsList");
 const documentsMessage = document.getElementById("documentsMessage");
 
+const DEPARTMENTS = {
+  IFT: "Information Technology",
+  COM: "Computer Science",
+  CBS: "Cybersecurity",
+  SWE: "Software Engineering"
+};
+
 function showMessage(element, message, success = false) {
   if (!element) return;
-
   element.textContent = message;
   element.style.color = success ? "#15803d" : "#b42318";
 }
-
 
 function showLogin() {
   loginSection.hidden = false;
@@ -37,7 +44,6 @@ function showDashboard() {
   dashboardSection.hidden = false;
   logoutBtn.hidden = false;
 }
-
 
 async function getAccessToken() {
   const { data, error } = await supabaseClient.auth.getSession();
@@ -69,19 +75,24 @@ async function apiRequest(url, options = {}) {
   return result;
 }
 
+function getDocumentDepartments(doc) {
+  const departments = Array.isArray(doc.departments) &&
+      doc.departments.length
+    ? doc.departments
+    : [doc.department || doc.departmentCode || ""];
+
+  return [...new Set(departments.filter((code) => DEPARTMENTS[code]))];
+}
+
 // ADMIN LOGIN
-loginForm.addEventListener("submit", async function (event) {
+loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
-
-  const submitButton = loginForm.querySelector(
-    'button[type="submit"]'
-  );
+  const submitButton = loginForm.querySelector('button[type="submit"]');
 
   showMessage(loginMessage, "Logging in...");
-
   if (submitButton) submitButton.disabled = true;
 
   try {
@@ -91,10 +102,7 @@ loginForm.addEventListener("submit", async function (event) {
     });
 
     if (error) throw error;
-
-    if (!data.session) {
-      throw new Error("Login failed. Please try again.");
-    }
+    if (!data.session) throw new Error("Login failed. Please try again.");
 
     showDashboard();
     showMessage(loginMessage, "");
@@ -107,7 +115,7 @@ loginForm.addEventListener("submit", async function (event) {
   }
 });
 
-// LOAD DOCUMENTS
+// DOCUMENT LIST
 async function loadDocuments() {
   documentsList.replaceChildren();
   showMessage(documentsMessage, "Loading documents...");
@@ -118,14 +126,14 @@ async function loadDocuments() {
       ? result
       : result.documents || [];
 
-    if (documents.length === 0) {
+    if (!documents.length) {
       showMessage(documentsMessage, "No past questions uploaded yet.", true);
       return;
     }
 
     showMessage(documentsMessage, "");
 
-    documents.forEach(function (doc) {
+    documents.forEach((doc) => {
       const card = document.createElement("div");
       card.className = "document-item";
 
@@ -133,11 +141,13 @@ async function loadDocuments() {
       title.textContent = doc.title || "Untitled PDF";
 
       const details = document.createElement("p");
+      const departments = getDocumentDepartments(doc);
+
       details.textContent = [
-        doc.department || doc.departmentCode || "",
-        doc.academic_level || doc.level || doc.academicLevel || "",
+        departments.map((code) => DEPARTMENTS[code]).join(", "),
+        doc.academicLevel || doc.academic_level || doc.level || "",
         doc.semester || "",
-        doc.academic_year || doc.year || ""
+        doc.academicYear || doc.academic_year || doc.year || ""
       ].filter(Boolean).join(" • ");
 
       const openButton = document.createElement("button");
@@ -145,7 +155,7 @@ async function loadDocuments() {
       openButton.textContent = "View PDF";
       openButton.className = "secondary-btn";
 
-      openButton.addEventListener("click", function () {
+      openButton.addEventListener("click", () => {
         if (doc.id) {
           window.open(
             "/api/pdf?id=" + encodeURIComponent(doc.id),
@@ -155,35 +165,111 @@ async function loadDocuments() {
         }
       });
 
-      const deleteButton = document.createElement("button");
-      deleteButton.type = "button";
-      deleteButton.textContent = "Delete";
-      deleteButton.className = "delete-btn";
+      const removeLabel = document.createElement("label");
+      removeLabel.textContent = "Remove from department:";
 
-      deleteButton.addEventListener("click", async function () {
+      const departmentSelect = document.createElement("select");
+      departmentSelect.setAttribute(
+        "aria-label",
+        "Choose department to remove this PDF from"
+      );
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Select department";
+      departmentSelect.appendChild(placeholder);
+
+      departments.forEach((code) => {
+        const option = document.createElement("option");
+        option.value = code;
+        option.textContent = DEPARTMENTS[code];
+        departmentSelect.appendChild(option);
+      });
+
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.textContent = "Remove from Department";
+      removeButton.className = "secondary-btn";
+
+      removeButton.addEventListener("click", async () => {
+        const department = departmentSelect.value;
+
+        if (!department) {
+          showMessage(documentsMessage, "Select a department first.");
+          return;
+        }
+
         const confirmed = window.confirm(
-          `Are you sure you want to delete "${doc.title}"?`
+          `Remove "${doc.title}" from ${DEPARTMENTS[department]} only?`
         );
 
         if (!confirmed) return;
 
-        deleteButton.disabled = true;
+        removeButton.disabled = true;
 
         try {
           await apiRequest(
-            "/api/documents?id=" + encodeURIComponent(doc.id),
+            "/api/documents?id=" + encodeURIComponent(doc.id) +
+              "&department=" + encodeURIComponent(department),
             { method: "DELETE" }
           );
 
-          card.remove();
-          showMessage(documentsMessage, "Document deleted successfully.", true);
+          showMessage(
+            documentsMessage,
+            "Removed from " + DEPARTMENTS[department] + ".",
+            true
+          );
+
+          await loadDocuments();
         } catch (error) {
           showMessage(documentsMessage, error.message);
-          deleteButton.disabled = false;
+          removeButton.disabled = false;
         }
       });
 
-      card.append(title, details, openButton, deleteButton);
+      const deleteAllButton = document.createElement("button");
+      deleteAllButton.type = "button";
+      deleteAllButton.textContent = "Delete Everywhere";
+      deleteAllButton.className = "delete-btn";
+
+      deleteAllButton.addEventListener("click", async () => {
+        const confirmed = window.confirm(
+          `Delete "${doc.title}" from ALL departments and delete its PDF permanently?`
+        );
+
+        if (!confirmed) return;
+
+        deleteAllButton.disabled = true;
+
+        try {
+          await apiRequest(
+            "/api/documents?id=" + encodeURIComponent(doc.id) + "&all=1",
+            { method: "DELETE" }
+          );
+
+          showMessage(
+            documentsMessage,
+            "PDF deleted from all departments.",
+            true
+          );
+
+          await loadDocuments();
+        } catch (error) {
+          showMessage(documentsMessage, error.message);
+          deleteAllButton.disabled = false;
+        }
+      });
+
+      card.append(
+        title,
+        details,
+        openButton,
+        removeLabel,
+        departmentSelect,
+        removeButton,
+        deleteAllButton
+      );
+
       documentsList.appendChild(card);
     });
   } catch (error) {
@@ -192,23 +278,35 @@ async function loadDocuments() {
 }
 
 // UPLOAD PDF
-uploadForm.addEventListener("submit", async function (event) {
+uploadForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const title = document.getElementById("title").value.trim();
-  const department = document.getElementById("department").value;
+  const departments = [
+    ...new Set(
+      [...uploadForm.querySelectorAll(
+        'input[name="departments"]:checked'
+      )].map((input) => input.value)
+    )
+  ];
+
   const level = document.getElementById("level").value;
   const semester = document.getElementById("semester").value;
   const academicYear = document.getElementById("academicYear").value.trim();
   const file = document.getElementById("pdfFile").files[0];
 
-  if (!title || !department || !level || !semester || !file) {
-    showMessage(uploadMessage, "Please complete all required fields.");
+  if (!title || !departments.length || !level || !semester || !file) {
+    showMessage(
+      uploadMessage,
+      "Enter the title, select at least one department, level, semester and PDF."
+    );
     return;
   }
 
-  if (file.type !== "application/pdf" &&
-      !file.name.toLowerCase().endsWith(".pdf")) {
+  if (
+    file.type !== "application/pdf" &&
+    !file.name.toLowerCase().endsWith(".pdf")
+  ) {
     showMessage(uploadMessage, "Please select a PDF file.");
     return;
   }
@@ -222,9 +320,9 @@ uploadForm.addEventListener("submit", async function (event) {
   showMessage(uploadMessage, "Preparing secure upload...");
 
   let uploadedPath = null;
+  let metadataSaved = false;
 
   try {
-    // Ask the backend for a temporary upload token.
     const uploadInfo = await apiRequest("/api/upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -242,7 +340,6 @@ uploadForm.addEventListener("submit", async function (event) {
 
     showMessage(uploadMessage, "Uploading PDF...");
 
-    // Upload directly to the private Supabase bucket.
     const { error: storageError } = await supabaseClient.storage
       .from("past-questions")
       .uploadToSignedUrl(uploadInfo.path, uploadInfo.token, file, {
@@ -254,13 +351,12 @@ uploadForm.addEventListener("submit", async function (event) {
 
     showMessage(uploadMessage, "Saving document details...");
 
-    // Save metadata through the protected backend.
     await apiRequest("/api/documents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
-        department,
+        departments,
         academicLevel: level,
         semester,
         academicYear,
@@ -268,8 +364,15 @@ uploadForm.addEventListener("submit", async function (event) {
       })
     });
 
+    metadataSaved = true;
     uploadForm.reset();
-    showMessage(uploadMessage, "PDF uploaded successfully.", true);
+
+    showMessage(
+      uploadMessage,
+      "PDF uploaded successfully to: " +
+        departments.map((code) => DEPARTMENTS[code]).join(", "),
+      true
+    );
 
     await loadDocuments();
   } catch (error) {
@@ -278,11 +381,9 @@ uploadForm.addEventListener("submit", async function (event) {
       error.message || "Upload failed. Please try again."
     );
 
-    // If the file uploaded but saving its details failed,
-    // the backend may need to clean up the unused file.
-    if (uploadedPath) {
+    if (uploadedPath && !metadataSaved) {
       console.warn(
-        "An upload may need cleanup if saving metadata failed."
+        "Upload may have succeeded without saved metadata. Check storage before retrying."
       );
     }
   } finally {
@@ -290,11 +391,11 @@ uploadForm.addEventListener("submit", async function (event) {
   }
 });
 
-// REFRESH DOCUMENTS
+// REFRESH
 refreshBtn.addEventListener("click", loadDocuments);
 
 // LOGOUT
-logoutBtn.addEventListener("click", async function () {
+logoutBtn.addEventListener("click", async () => {
   logoutBtn.disabled = true;
 
   try {
@@ -308,7 +409,7 @@ logoutBtn.addEventListener("click", async function () {
   }
 });
 
-// CHECK EXISTING SESSION
+// RESTORE SESSION
 async function initializeAdmin() {
   const { data, error } = await supabaseClient.auth.getSession();
 
