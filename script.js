@@ -1,4 +1,3 @@
-
 "use strict";
 
 /* =========================================
@@ -37,6 +36,7 @@ const currentYear = document.getElementById("currentYear");
 let documents = [];
 let documentsLoaded = false;
 let documentsError = false;
+let currentRegistrationNumber = "";
 
 if (currentYear) {
     currentYear.textContent = new Date().getFullYear();
@@ -61,6 +61,8 @@ function escapeHTML(value) {
 }
 
 function showFinderMessage(message, type = "info") {
+    if (!finderMessage) return;
+
     finderMessage.textContent = message;
     finderMessage.className = "finder-message " + type;
 }
@@ -116,6 +118,8 @@ function normalizeSemester(value) {
 }
 
 function showDepartmentSection() {
+    if (!departmentSection) return;
+
     departmentSection.hidden = false;
     departmentSection.scrollIntoView({
         behavior: "smooth",
@@ -164,12 +168,17 @@ function findDepartmentFromRegistration(registrationNumber) {
    LOAD DOCUMENTS FROM BACKEND
 ========================================= */
 
-async function loadDocuments() {
+async function loadDocuments(registrationNumber) {
     try {
-        const response = await fetch(API_URL, {
-            method: "GET",
-            headers: { "Accept": "application/json" }
-        });
+        const response = await fetch(
+            API_URL + "?registrationNumber=" +
+                encodeURIComponent(registrationNumber),
+            {
+                method: "GET",
+                headers: { "Accept": "application/json" },
+                cache: "no-store"
+            }
+        );
 
         if (!response.ok) {
             throw new Error("Unable to load documents.");
@@ -241,7 +250,11 @@ function createDocumentHTML(document) {
         "Past Question"
     );
 
-    const pdfUrl = PDF_URL + "?id=" + encodeURIComponent(id);
+    const pdfUrl =
+        PDF_URL +
+        "?id=" + encodeURIComponent(id) +
+        "&registrationNumber=" +
+        encodeURIComponent(currentRegistrationNumber);
 
     return `
         <article class="document-item">
@@ -369,6 +382,8 @@ async function showDepartmentPastQuestions(
         return;
     }
 
+    currentRegistrationNumber = registrationNumber;
+
     departmentTitle.textContent = department.name;
 
     departmentDescription.textContent =
@@ -382,7 +397,7 @@ async function showDepartmentPastQuestions(
 
     showDepartmentSection();
 
-    await loadDocuments();
+    await loadDocuments(registrationNumber);
 
     departmentContent.innerHTML = `
         <div class="level-grid">
@@ -411,19 +426,30 @@ if (form) {
     form.addEventListener("submit", async function (event) {
         event.preventDefault();
 
-        const registrationNumber = registrationInput.value.trim().toUpperCase();
+        const registrationNumber =
+            registrationInput.value.trim().toUpperCase();
+
         registrationInput.value = registrationNumber;
 
-        const result = findDepartmentFromRegistration(registrationNumber);
+        const result = findDepartmentFromRegistration(
+            registrationNumber
+        );
 
         if (!result.valid) {
+            currentRegistrationNumber = "";
+            documents = [];
+
             departmentSection.hidden = true;
             departmentContent.innerHTML = "";
+
             showFinderMessage(result.message, "error");
             return;
         }
 
-        showFinderMessage("Checking your registration number...", "info");
+        showFinderMessage(
+            "Checking your registration number...",
+            "info"
+        );
 
         await showDepartmentPastQuestions(
             result.departmentCode,
