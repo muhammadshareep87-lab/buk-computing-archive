@@ -22,7 +22,7 @@
 }
 
 html {
-    scroll-behavior: auto !important;
+    scroll-behavior: smooth;
     scroll-padding-top: 90px;
 }
 
